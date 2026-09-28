@@ -1,41 +1,27 @@
 # Fill the Python code in this file
 from test_data import *
-from policy import POLICY
 
-
-def json_search(key, input_object, role=None):
-    """
-    Search for a key recursively in a JSON object (nested dicts and lists)
-    and return a list of matching {key: value} dicts, enforcing role-based
-    access control based on policy.py.
-    """
-    # Enforce role-based access control based on policy.py
-    if key in POLICY:
-        allowed_roles = POLICY[key]
-        if role is None:
-            # Sensitive keys (e.g. apiKey, managementIpAddress) require explicit role permissions
-            if "viewer" not in allowed_roles:
-                return []
-        elif role not in allowed_roles:
-            return []
-
+def json_search(key, input_object):
     ret_val = []
+    if isinstance(input_object, dict):  # Iterate dictionary
+        for k, v in input_object.items():  # searching key in the dict
+            if k == key:
+                temp = {k: v}
+                ret_val.append(temp)
 
-    def _recursive_search(obj):
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if k == key:
-                    ret_val.append({k: v})
-                if isinstance(v, (dict, list)):
-                    _recursive_search(v)
-        elif isinstance(obj, list):
-            for item in obj:
-                if isinstance(item, (dict, list)):
-                    _recursive_search(item)
-
-    _recursive_search(input_object)
+            if isinstance(v, dict):  # the value is another dict so repeat
+                json_search(key, v)
+            elif isinstance(v, list):  # it's a list
+                for item in v:
+                    if not isinstance(item, (str, int)):  # if dict or list repeat
+                        json_search(key, item)
+    else:  # Iterate a list because some APIs return JSON object in a list
+        for val in input_object:
+            if not isinstance(val, (str, int)):
+                json_search(key, val)
     return ret_val
 
+print(json_search("issueSummary", data))
 
 if __name__ == '__main__':
     print(json_search("issueSummary", data))
